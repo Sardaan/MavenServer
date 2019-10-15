@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="MavenCommands">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/../MavenCommands/out/artifacts/MavenCommands_jar/MavenCommands.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
