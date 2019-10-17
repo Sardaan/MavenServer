@@ -1,53 +1,22 @@
 package laba.server;
 
 import collection.Human;
-import commands.Command;
-import laba.authorization.UserDAO;
+import laba.authorization.DB;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.time.format.DateTimeFormatter;
-import java.util.Formatter;
-import java.util.HashMap;
-import java.util.Map;
-
+import java.util.concurrent.ConcurrentLinkedDeque;
 
 public class CollectionManager {
 
-//    private static Map<String, Command> availableCommands = new HashMap<>();
-//
-//    static {
-//        availableCommands.put("add", add());
-//        availableCommands.put("add_if_last", addIfLast());
-//        availableCommands.put("clean", clean());
-//        availableCommands.put("help", help());
-//        availableCommands.put("info",new Info());
-//        availableCommands.put("remove",new Remove());
-//        availableCommands.put("remove_last",new RemoveLast());
-//        availableCommands.put("auth",new Auth());
-//        availableCommands.put("show",new Show());
-//        availableCommands.put("human_format",new HumanFormat());
-//        availableCommands.put("sort",new Sort());
-//    }
-//
-//    public static Command getCommand(String commandName){
-//        return availableCommands.get(commandName);
-//    }
-
-//    public String getHumanName(int id) throws SQLException {
-//        PreparedStatement stmt = connection.prepareStatement("SELECT name FROM collection WHERE id=?");
-//        stmt.setString(1, String.valueOf(id));
-//        ResultSet rs = stmt.executeQuery();
-//        if (rs.next()) return rs.getString("name");
-//        else return "wrong";
-//    }
-
+    static ConcurrentLinkedDeque<Human> humans = new ConcurrentLinkedDeque<>();
 
     public static synchronized String add(Human human, String login){
         try{
             if (human!=null) {
-                PreparedStatement stmt = UserDAO.getConnection().prepareStatement("INSERT INTO collection (userLogin, name, course, birthdate, campus, floor, time) VALUES (?,?,?,?,?,?,?)");
+                humans.add(human);
+                PreparedStatement stmt = DB.getConnection().prepareStatement("INSERT INTO collection (userLogin, name, course, birthdate, campus, floor, time) VALUES (?,?,?,?,?,?,?)");
                 stmt.setString(1, login);
                 stmt.setString(2, human.getName());
                 stmt.setInt(3, human.getCourse());
@@ -56,9 +25,9 @@ public class CollectionManager {
                 stmt.setInt(6, human.getLocation().getFloor());
                 stmt.setString(7, String.valueOf(human.getTime()));
                 stmt.execute();
-
+                return "Human is added";
             }
-            return "Human is added";
+
         }catch (SQLException e){
             e.printStackTrace();
         }return "Nothing added in collection";
@@ -67,12 +36,13 @@ public class CollectionManager {
     public static synchronized String addIfLast(Human human, String login){
         try {
             if (human != null) {
-            Statement stmt = UserDAO.getConnection().createStatement();
+            Statement stmt = DB.getConnection().createStatement();
             ResultSet rs = stmt.executeQuery("SELECT name FROM collection order by name limit 1");
 
             if (rs.next()) {
                 String name = rs.getString("name");
                 if (name.compareTo(human.getName())<0) {
+                    humans.add(human);
                     add(human, login);
                     return "Human is added";
                 }
@@ -94,6 +64,7 @@ public class CollectionManager {
                 "   remove:               удалит элемент из коллекции если его создал ты.\n" +
                 "   remove_if_last:       удалит из коллекции элемент если он намименьший (по алфивиту) и его добваил ты.\n" +
                 "   show:                 выводит в стандартный поток вывода все элементы.\n" +
+                "   logout:               выход из аккаунта. \n" +
                 "   exit:                 выход из программы. \n";
 
     }
@@ -116,8 +87,8 @@ public class CollectionManager {
     public static synchronized String info(){
 
         try {
-            if (!UserDAO.isEmpty()) {
-                Statement stmt = UserDAO.getConnection().createStatement();
+            if (!DB.isEmpty()) {
+                Statement stmt = DB.getConnection().createStatement();
                 ResultSet rs = stmt.executeQuery("SELECT count(name) FROM collection");
                 if (rs.next()) {
                     return "Количество элементов в кэллекции:" + rs.getInt(1);
@@ -133,7 +104,7 @@ public class CollectionManager {
 
     public static synchronized String clean(String login){
         try {
-            PreparedStatement stmt = UserDAO.getConnection().prepareStatement("DELETE FROM collection * where userLogin =?");
+            PreparedStatement stmt = DB.getConnection().prepareStatement("DELETE FROM collection * where userLogin =?");
             stmt.setString(1, login);
             stmt.execute();
             return "Collection is cleaned";
@@ -147,8 +118,8 @@ public class CollectionManager {
 
         try {
             String inf1 = info();
-
-            PreparedStatement stmt = UserDAO.getConnection().prepareStatement("DELETE FROM collection * where name = ? and userLogin = ?");
+            humans.remove(human);
+            PreparedStatement stmt = DB.getConnection().prepareStatement("DELETE FROM collection * where name = ? and userLogin = ?");
             stmt.setString(1, human.getName());
             stmt.setString(2, login);
             stmt.execute();
@@ -164,12 +135,13 @@ public class CollectionManager {
     public static synchronized String removeIfLast(Human human, String login){
         try {
             if (human != null) {
-                Statement stmt = UserDAO.getConnection().createStatement();
+                Statement stmt = DB.getConnection().createStatement();
                 ResultSet rs = stmt.executeQuery("SELECT name FROM collection order by name limit 1");
 
                 if (rs.next()) {
                     String name = rs.getString("name");
                     if (name.compareTo(human.getName())<0) {
+                        humans.remove(human);
                         remove(human, login);
                         return "Human is removed";
                     }
@@ -184,25 +156,24 @@ public class CollectionManager {
 
     public static synchronized String show() {
         try {
-            Statement stmt = UserDAO.getConnection().createStatement();
-            ResultSet rs = stmt.executeQuery("SELECT * FROM collection");
+            if (!DB.isEmpty()) {
+                Statement stmt = DB.getConnection().createStatement();
+                ResultSet rs = stmt.executeQuery("SELECT * FROM collection");
+                StringBuilder stringBuilder = new StringBuilder();
+                stringBuilder.append("login, name, course, birthDate, campus, floor, time \n");
+                while (rs.next()) {
+                    stringBuilder.append(rs.getString("userLogin") + ", " + rs.getString("name")
+                            + ", " + rs.getInt("course") + ", " + rs.getString("birthDate") + ", " + rs.getString("campus")
+                            + ", " + rs.getInt("floor") + ", " + rs.getString("time") + "\n");
 
-            StringBuilder stringBuilder = new StringBuilder();
-           
-            
-            stringBuilder.append("login, name, course, birthDate, campus, floor, time \n");
-            while (rs.next()){
-                stringBuilder.append(rs.getString("userLogin") + ", " + rs.getString("name")
-                        + ", " + rs.getInt("course") + ", " + rs.getString("birthDate") + ", " + rs.getString("campus")
-                        + ", " + rs.getInt("floor") + ", " + rs.getString("time") +"\n");
-                
+                }
+                return new String(stringBuilder);
             }
-            return new String(stringBuilder);
 
         }catch (SQLException e){
             e.printStackTrace();
         }
-                return "There is no added humans";
+        return "There is no added humans";
     }
 
 

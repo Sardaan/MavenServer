@@ -7,7 +7,7 @@ public class Auth {
     
     public static String login(String login, String password){
         try {
-            if (UserDAO.getUserPassword(login).equals(Password.generatePassword(password,"salt"))){
+            if (DB.getUserPassword(login).equals(Password.generatePassword(password,"salt"))){
 
                 return "You are successfully login";
 
@@ -20,13 +20,8 @@ public class Auth {
     }
 
     public static String register(String login, String mail){
-        try {
-            if (UserDAO.isLoginAvailable(login)){
-                new UserDAO().addUser(login, mail);
-                return "You are successfully registered";
-            }
-        }catch (SQLException e) {
-            e.printStackTrace();
+        if (new DB().addUser(login, mail)){
+            return "You are successfully registered";
         }
         return "You are not registered!";
     }

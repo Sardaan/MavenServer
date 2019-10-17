@@ -1,11 +1,10 @@
 package laba.authorization;
 
-import collection.Human;
 import laba.mail.MailSender;
 
 import java.sql.*;
 
-public class UserDAO {
+public class DB {
     private static final Connection connection;
 
     static {
@@ -46,27 +45,23 @@ public class UserDAO {
         PreparedStatement stmt = connection.prepareStatement("SELECT * FROM studs WHERE user_login=?");
         stmt.setString(1, username);
         ResultSet rs = stmt.executeQuery();
-        if (rs.next())
-            return false;
-        else return true;
+        return !rs.next();
     }
 
 
     public static boolean addUser(String login, String mail){
         try{
-            if (login!=null && mail!=null) {
-                String pwd = Password.generateString(10);
-                MailSender.sendPassword(pwd, mail);
-                String password= Password.generatePassword(pwd, "salt");
+            String pwd = Password.generateString(10);
+            if (MailSender.sendPassword(pwd, mail) && !login.equals("") && isLoginAvailable(login) ){
 
-                PreparedStatement stmt = UserDAO.getConnection().prepareStatement("INSERT INTO studs (user_login, password, user_mail) VALUES (?,?,?)");
+                String password= Password.generatePassword(pwd, "salt");
+                PreparedStatement stmt = DB.getConnection().prepareStatement("INSERT INTO studs (user_login, password, user_mail) VALUES (?,?,?)");
                 stmt.setString(1, login);
                 stmt.setString(2, password);
                 stmt.setString(3, mail);
                 stmt.execute();
-
+                return true;
             }
-            return true;
         }catch (SQLException e){
             e.printStackTrace();
         }return false;

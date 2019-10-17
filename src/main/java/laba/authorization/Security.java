@@ -4,9 +4,9 @@ import java.sql.SQLException;
 
 public class Security {
 
-    public static String checkLog(String log, String password){
+    public static String checkLog(String login, String password){
         try {
-            if(log!=null && password!=null && UserDAO.getUserPassword(log).equals(Password.generatePassword(password, "salt")))
+            if(login!=null && password!=null && DB.getUserPassword(login).equals(Password.generatePassword(password, "salt")))
                 return "ok";
         } catch (SQLException e) {
             e.printStackTrace();

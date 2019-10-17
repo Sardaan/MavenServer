@@ -18,15 +18,18 @@ public class MailSender {
     static Session mailSession;
 
 
-    public static void sendPassword(String password, String userMail) {
+    public static boolean sendPassword(String password, String userMail) {
         try {
+
+
+            System.out.println("1");
             String to = userMail;
             String from = myMail;
 
             Properties props = System.getProperties();
             props.put("mail.smtp.starttls.enable", "true");
             props.put("mail.smtp.host", host);
-            props.put("mail.smtp.port", "25");
+            props.put("mail.smtp.port", 25);
             props.put("mail.smtp.auth", "true");
             props.put("mail.smtp.starttls.required", "true");
 
@@ -50,10 +53,15 @@ public class MailSender {
             Transport.send(msg);
             transport.close();
 
+
+            System.out.println(2);
+
+            return true;
         }
         catch (Exception ex) {
             ex.printStackTrace();
             System.out.println("Couldn't connect to the mail");
         }
+        return false;
     }
 }
